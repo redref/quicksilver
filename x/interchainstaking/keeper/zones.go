@@ -133,6 +133,18 @@ func (k Keeper) GetZoneForPerformanceAccount(ctx sdk.Context, address string) *t
 	return zone
 }
 
+func (k Keeper) GetZoneForDepositAccount(ctx sdk.Context, address string) *types.Zone {
+	var zone *types.Zone
+	k.IterateZones(ctx, func(_ int64, zoneInfo types.Zone) (stop bool) {
+		if zoneInfo.DepositAddress != nil && zoneInfo.DepositAddress.Address == address {
+			zone = &zoneInfo
+			return true
+		}
+		return false
+	})
+	return zone
+}
+
 func (k Keeper) EnsureICAsActive(ctx sdk.Context, zone *types.Zone) error {
 	k.Logger(ctx).Info("Ensuring ICAs for zone", "zone", zone.ChainId)
 	if err := k.EnsureICAActive(ctx, zone, zone.DepositAddress); err != nil {
@@ -178,11 +190,13 @@ func (k *Keeper) EnsureWithdrawalAddresses(ctx sdk.Context, zone *types.Zone) er
 		k.Logger(ctx).Info("Delegation address not set")
 		return nil
 	}
-	withdrawalAddress := zone.WithdrawalAddress.Address
+
 	if zone.DepositAddress == nil {
 		k.Logger(ctx).Info("Deposit address not set")
 		return nil
 	}
+	withdrawalAddress := zone.WithdrawalAddress.Address
+
 	if zone.DepositAddress.WithdrawalAddress != zone.WithdrawalAddress.Address {
 		msg := distrTypes.MsgSetWithdrawAddress{DelegatorAddress: zone.DepositAddress.Address, WithdrawAddress: withdrawalAddress}
 		err := k.SubmitTx(ctx, []sdk.Msg{&msg}, zone.DepositAddress, "")
